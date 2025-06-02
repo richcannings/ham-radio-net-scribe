@@ -1,0 +1,6 @@
+numpy
+openai-whisper
+google-generativeai
+colorama
+sounddevice
+scipy 
