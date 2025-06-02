@@ -5,15 +5,21 @@ import colorama
 import threading
 import sounddevice as sd
 from scipy.signal import resample
+import requests # For sending data to Flask app
+import json # For formatting JSON payloads
 
 from constants import *
 from gemini_manager import GeminiManager # Import the new class
+from app import run_flask_app # Import the function to run Flask
 
 # Whisper Initialization
 whisper_model = whisper.load_model(WHISPER_MODEL)
 
 # Initialize GeminiManager (this will handle API key loading and model setup)
 gemini_manager = GeminiManager()
+
+# URL for the Flask app (running locally)
+FLASK_APP_URL = "http://localhost:5000"
 
 # Audio Processing Thread
 def process_audio_thread(raw_audio_data, capture_samplerate):
@@ -50,12 +56,22 @@ def process_audio_thread(raw_audio_data, capture_samplerate):
         transcribed_text = transcript['text'].strip()
         print(colorama.Fore.YELLOW + "Transcription: " + transcribed_text)
 
+        # Send transcription to Flask app
+        try:
+            requests.post(f"{FLASK_APP_URL}/add_transcription", json={"text": transcribed_text}, timeout=2)
+        except requests.exceptions.RequestException as e:
+            print(colorama.Fore.RED + f"Failed to send transcription to Flask app: {e}")
+
         if transcribed_text:
-            # Use GeminiManager to get structured output
             processed_gemini_output = gemini_manager.get_structured_output(transcribed_text)
             if processed_gemini_output:
                 print(colorama.Fore.GREEN + "Gemini Output:")
                 print(colorama.Fore.GREEN + processed_gemini_output)
+                # Send Gemini output to Flask app
+                try:
+                    requests.post(f"{FLASK_APP_URL}/add_gemini_output", json={"text": processed_gemini_output}, timeout=2)
+                except requests.exceptions.RequestException as e:
+                    print(colorama.Fore.RED + f"Failed to send Gemini output to Flask app: {e}")
             else:
                 print(colorama.Fore.YELLOW + "Gemini processing returned no output or an error occurred.")
         else:
@@ -97,6 +113,12 @@ def find_audio_device_index_sd(device_name_query):
 
 def main():
     colorama.init(autoreset=True)
+
+    # Start Flask app in a separate thread
+    flask_thread = threading.Thread(target=run_flask_app, daemon=True)
+    flask_thread.start()
+    print(colorama.Fore.CYAN + "Flask web UI started in a background thread. Access at http://localhost:5000")
+
     target_device = find_audio_device_index_sd(DEVICE_NAME)
 
     if target_device is None:

@@ -3,4 +3,5 @@ openai-whisper
 google-generativeai
 colorama
 sounddevice
-scipy 
+scipy
+Flask 

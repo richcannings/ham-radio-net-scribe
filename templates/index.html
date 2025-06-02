@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ham Radio Net Scribe</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="panel" id="transcriptions-panel">
+            <h2>Transcriptions</h2>
+            <div id="transcriptions-history" class="history-box">
+                <!-- Transcriptions will be loaded here -->
+            </div>
+        </div>
+        <div class="panel" id="gemini-outputs-panel">
+            <h2>Gemini Outputs</h2>
+            <div id="gemini-outputs-history" class="history-box">
+                <!-- Gemini outputs will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Error fetching data from " + url + ":", error);
+                return null;
+            }
+        }
+
+        function updateHistory(elementId, dataArray) {
+            const historyDiv = document.getElementById(elementId);
+            historyDiv.innerHTML = ''; // Clear previous entries
+            dataArray.forEach(item => {
+                const entry = document.createElement('div');
+                entry.classList.add('history-entry');
+                // Check if item is an object and has a 'text' property for Gemini output
+                // Or if it's a direct string for transcriptions
+                if (typeof item === 'object' && item !== null && item.hasOwnProperty('text')) {
+                    entry.textContent = item.text; 
+                } else if (typeof item === 'string') {
+                    entry.textContent = item;
+                } else {
+                    entry.textContent = JSON.stringify(item); // Fallback for other types
+                }
+                historyDiv.appendChild(entry);
+            });
+            // Scroll to the bottom
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        async function refreshData() {
+            const transcriptionsData = await fetchData('/get_transcriptions');
+            if (transcriptionsData && transcriptionsData.transcriptions) {
+                updateHistory('transcriptions-history', transcriptionsData.transcriptions);
+            }
+
+            const geminiOutputsData = await fetchData('/get_gemini_outputs');
+            if (geminiOutputsData && geminiOutputsData.gemini_outputs) {
+                updateHistory('gemini-outputs-history', geminiOutputsData.gemini_outputs);
+            }
+        }
+
+        // Refresh data every 2 seconds
+        setInterval(refreshData, 2000);
+
+        // Initial data load
+        window.onload = refreshData;
+    </script>
+</body>
+</html> 
