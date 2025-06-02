@@ -7,22 +7,45 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="panel" id="transcriptions-panel">
-            <h2>Transcriptions</h2>
-            <div id="transcriptions-history" class="history-box">
-                <!-- Transcriptions will be loaded here -->
-            </div>
+    <div class="main-content">
+        <div id="net-log-section">
+            <h2>Net Log</h2>
+            <table id="net-log-table">
+                <thead>
+                    <tr>
+                        <th>Call Sign</th>
+                        <th>Name</th>
+                        <th>Location</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Log entries will be added here -->
+                </tbody>
+            </table>
         </div>
-        <div class="panel" id="gemini-outputs-panel">
-            <h2>Gemini Outputs</h2>
-            <div id="gemini-outputs-history" class="history-box">
-                <!-- Gemini outputs will be loaded here -->
+
+        <div class="container">
+            <div class="panel" id="transcriptions-panel">
+                <h2>Transcriptions</h2>
+                <div id="transcriptions-history" class="history-box">
+                    <!-- Transcriptions will be loaded here -->
+                </div>
+            </div>
+            <div class="panel" id="gemini-outputs-panel">
+                <h2>Gemini Outputs</h2>
+                <div id="gemini-outputs-history" class="history-box">
+                    <!-- Gemini outputs will be loaded here -->
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Store net log data client-side for now
+        let netLog = [];
+
         async function fetchData(url) {
             try {
                 const response = await fetch(url);
@@ -36,44 +59,114 @@
             }
         }
 
-        function updateHistory(elementId, dataArray) {
+        function renderNetLogTable() {
+            const tableBody = document.getElementById('net-log-table').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = ''; // Clear existing rows
+
+            netLog.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = entry.callsign;
+                row.insertCell().textContent = entry.name;
+                row.insertCell().textContent = entry.location;
+                row.insertCell().textContent = entry.type;
+                
+                const actionsCell = row.insertCell();
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Remove';
+                removeButton.classList.add('action-button', 'remove-button');
+                removeButton.onclick = () => {
+                    netLog.splice(index, 1); // Remove from data array
+                    renderNetLogTable(); // Re-render table
+                };
+                actionsCell.appendChild(removeButton);
+            });
+        }
+
+        function addLogEntry(callsign, name, location, type) {
+            // Basic validation
+            if (!callsign || callsign === "unknown") {
+                alert("Cannot add entry: Call sign is missing or unknown.");
+                return;
+            }
+            netLog.push({ callsign, name, location, type });
+            renderNetLogTable();
+        }
+
+        function updateHistory(elementId, dataArray, isGeminiOutput = false) {
             const historyDiv = document.getElementById(elementId);
             historyDiv.innerHTML = ''; // Clear previous entries
-            dataArray.forEach(item => {
-                const entry = document.createElement('div');
-                entry.classList.add('history-entry');
-                // Check if item is an object and has a 'text' property for Gemini output
-                // Or if it's a direct string for transcriptions
-                if (typeof item === 'object' && item !== null && item.hasOwnProperty('text')) {
-                    entry.textContent = item.text; 
-                } else if (typeof item === 'string') {
-                    entry.textContent = item;
+            
+            dataArray.forEach(itemData => {
+                const entryContainer = document.createElement('div');
+                entryContainer.classList.add('history-entry-container');
+
+                const entryTextDiv = document.createElement('div');
+                entryTextDiv.classList.add('history-entry-text');
+
+                let parsedGeminiData = null;
+                if (isGeminiOutput) {
+                    try {
+                        parsedGeminiData = JSON.parse(itemData);
+                        // Display pretty-printed JSON or a summary
+                        // For now, just using the raw string for display consistency, but parsedData is available
+                        entryTextDiv.textContent = itemData; 
+                    } catch (e) {
+                        console.warn("Gemini output is not valid JSON:", itemData, e);
+                        entryTextDiv.textContent = itemData; // Show raw string if not JSON
+                        parsedGeminiData = { callsign: 'unknown', name: 'unknown', location: 'unknown', traffic: false }; // Default for button logic
+                    }
                 } else {
-                    entry.textContent = JSON.stringify(item); // Fallback for other types
+                    entryTextDiv.textContent = itemData;
                 }
-                historyDiv.appendChild(entry);
+                entryContainer.appendChild(entryTextDiv);
+
+                if (isGeminiOutput && parsedGeminiData) {
+                    const buttonsDiv = document.createElement('div');
+                    buttonsDiv.classList.add('gemini-actions');
+
+                    const types = [
+                        { text: "Check In", type: "Check In" }, 
+                        { text: "Check In/Out", type: "Check In/Out" },
+                        { text: "Check In with Traffic", type: "Check In w/Traffic" }
+                    ];
+
+                    types.forEach(action => {
+                        const button = document.createElement('button');
+                        button.textContent = action.text;
+                        button.classList.add('action-button');
+                        if ((action.text === "Check In with Traffic" && parsedGeminiData.traffic === true) || 
+                            (action.text === "Check In" && (parsedGeminiData.traffic === false || parsedGeminiData.traffic === "unknown"))) {
+                            button.classList.add('button-green');
+                        }
+                        button.onclick = () => {
+                            addLogEntry(parsedGeminiData.callsign, parsedGeminiData.name, parsedGeminiData.location, action.type);
+                        };
+                        buttonsDiv.appendChild(button);
+                    });
+                    entryContainer.appendChild(buttonsDiv);
+                }
+                historyDiv.appendChild(entryContainer);
             });
-            // Scroll to the bottom
             historyDiv.scrollTop = historyDiv.scrollHeight;
         }
 
         async function refreshData() {
             const transcriptionsData = await fetchData('/get_transcriptions');
             if (transcriptionsData && transcriptionsData.transcriptions) {
-                updateHistory('transcriptions-history', transcriptionsData.transcriptions);
+                updateHistory('transcriptions-history', transcriptionsData.transcriptions, false);
             }
 
             const geminiOutputsData = await fetchData('/get_gemini_outputs');
             if (geminiOutputsData && geminiOutputsData.gemini_outputs) {
-                updateHistory('gemini-outputs-history', geminiOutputsData.gemini_outputs);
+                updateHistory('gemini-outputs-history', geminiOutputsData.gemini_outputs, true);
             }
         }
 
-        // Refresh data every 2 seconds
         setInterval(refreshData, 2000);
-
-        // Initial data load
-        window.onload = refreshData;
+        window.onload = () => {
+            refreshData();
+            renderNetLogTable(); // Initial render of the net log table
+        };
     </script>
 </body>
 </html> 
