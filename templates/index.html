@@ -65,35 +65,46 @@
 
             netLog.forEach((entry, index) => {
                 const row = tableBody.insertRow();
-                row.insertCell().textContent = entry.callsign;
+                
+                // Callsign cell
+                const callsignCell = row.insertCell();
+                if (entry.callsign && entry.callsign.toLowerCase() !== "unknown") {
+                    const callsignLink = document.createElement('a');
+                    callsignLink.href = `https://www.qrz.com/db/${entry.callsign.toUpperCase()}`;
+                    callsignLink.textContent = entry.callsign.toUpperCase();
+                    callsignLink.target = "_blank";
+                    callsignLink.rel = "noopener noreferrer";
+                    callsignCell.appendChild(callsignLink);
+                } else {
+                    callsignCell.textContent = entry.callsign;
+                }
+
                 row.insertCell().textContent = entry.name;
                 row.insertCell().textContent = entry.location;
                 row.insertCell().textContent = entry.type;
                 
-                // Apply strikethrough if not checked in
                 if (!entry.isCheckedIn) {
                     row.classList.add('checked-out-row');
                 }
 
                 const actionsCell = row.insertCell();
+                actionsCell.classList.add('actions-cell'); // Add a class for potential styling
                 
-                // Check Out/In Button
                 const checkInOutButton = document.createElement('button');
                 checkInOutButton.textContent = entry.isCheckedIn ? 'Check Out' : 'Check In';
                 checkInOutButton.classList.add('action-button');
                 checkInOutButton.onclick = () => {
-                    netLog[index].isCheckedIn = !netLog[index].isCheckedIn; // Toggle status
-                    renderNetLogTable(); // Re-render table
+                    netLog[index].isCheckedIn = !netLog[index].isCheckedIn;
+                    renderNetLogTable();
                 };
                 actionsCell.appendChild(checkInOutButton);
 
-                // Remove Button
                 const removeButton = document.createElement('button');
                 removeButton.textContent = 'Remove';
                 removeButton.classList.add('action-button', 'remove-button');
                 removeButton.onclick = () => {
-                    netLog.splice(index, 1); // Remove from data array
-                    renderNetLogTable(); // Re-render table
+                    netLog.splice(index, 1);
+                    renderNetLogTable();
                 };
                 actionsCell.appendChild(removeButton);
             });
@@ -118,15 +129,40 @@
 
                 const entryTextDiv = document.createElement('div');
                 entryTextDiv.classList.add('history-entry-text');
+                entryTextDiv.innerHTML = ''; // Clear for constructing new content
 
                 let parsedGeminiData = null;
                 if (isGeminiOutput) {
                     try {
                         parsedGeminiData = JSON.parse(itemData);
-                        entryTextDiv.textContent = itemData; 
+                        let callsign = parsedGeminiData.callsign || "unknown";
+                        let name = parsedGeminiData.name || "unknown";
+                        let location = parsedGeminiData.location || "unknown";
+
+                        // Create and append callsign (as link or text)
+                        if (callsign && callsign.toLowerCase() !== "unknown") {
+                            const callsignLink = document.createElement('a');
+                            callsignLink.href = `https://www.qrz.com/db/${callsign.toUpperCase()}`;
+                            callsignLink.textContent = callsign.toUpperCase();
+                            callsignLink.target = "_blank";
+                            callsignLink.rel = "noopener noreferrer"; // Security best practice
+                            entryTextDiv.appendChild(callsignLink);
+                        } else {
+                            entryTextDiv.appendChild(document.createTextNode(callsign));
+                        }
+
+                        // Append name and location
+                        entryTextDiv.appendChild(document.createTextNode(`, ${name} in ${location}`));
+                        
+                        // Append traffic information if applicable
+                        if (parsedGeminiData.traffic === true) {
+                            entryTextDiv.appendChild(document.createTextNode(", Traffic"));
+                        }
+
                     } catch (e) {
                         console.warn("Gemini output is not valid JSON:", itemData, e);
-                        entryTextDiv.textContent = itemData;
+                        entryTextDiv.textContent = itemData; // Fallback: Show raw string if not JSON
+                        // Default for button logic if parsing fails
                         parsedGeminiData = { callsign: 'unknown', name: 'unknown', location: 'unknown', traffic: false }; 
                     }
                 } else {
@@ -153,7 +189,10 @@
                             button.classList.add('button-green');
                         }
                         button.onclick = () => {
-                            addLogEntry(parsedGeminiData.callsign, parsedGeminiData.name, parsedGeminiData.location, action.type, action.defaultCheckInState);
+                            let logCallsign = parsedGeminiData.callsign || "unknown";
+                            let logName = parsedGeminiData.name || "unknown";
+                            let logLocation = parsedGeminiData.location || "unknown";
+                            addLogEntry(logCallsign, logName, logLocation, action.type, action.defaultCheckInState);
                         };
                         buttonsDiv.appendChild(button);
                     });
