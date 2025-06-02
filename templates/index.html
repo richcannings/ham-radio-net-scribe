@@ -70,7 +70,24 @@
                 row.insertCell().textContent = entry.location;
                 row.insertCell().textContent = entry.type;
                 
+                // Apply strikethrough if not checked in
+                if (!entry.isCheckedIn) {
+                    row.classList.add('checked-out-row');
+                }
+
                 const actionsCell = row.insertCell();
+                
+                // Check Out/In Button
+                const checkInOutButton = document.createElement('button');
+                checkInOutButton.textContent = entry.isCheckedIn ? 'Check Out' : 'Check In';
+                checkInOutButton.classList.add('action-button');
+                checkInOutButton.onclick = () => {
+                    netLog[index].isCheckedIn = !netLog[index].isCheckedIn; // Toggle status
+                    renderNetLogTable(); // Re-render table
+                };
+                actionsCell.appendChild(checkInOutButton);
+
+                // Remove Button
                 const removeButton = document.createElement('button');
                 removeButton.textContent = 'Remove';
                 removeButton.classList.add('action-button', 'remove-button');
@@ -82,13 +99,12 @@
             });
         }
 
-        function addLogEntry(callsign, name, location, type) {
-            // Basic validation
+        function addLogEntry(callsign, name, location, type, startCheckedIn = true) {
             if (!callsign || callsign === "unknown") {
                 alert("Cannot add entry: Call sign is missing or unknown.");
                 return;
             }
-            netLog.push({ callsign, name, location, type });
+            netLog.push({ callsign, name, location, type, isCheckedIn: startCheckedIn }); // Use startCheckedIn parameter
             renderNetLogTable();
         }
 
@@ -107,13 +123,11 @@
                 if (isGeminiOutput) {
                     try {
                         parsedGeminiData = JSON.parse(itemData);
-                        // Display pretty-printed JSON or a summary
-                        // For now, just using the raw string for display consistency, but parsedData is available
                         entryTextDiv.textContent = itemData; 
                     } catch (e) {
                         console.warn("Gemini output is not valid JSON:", itemData, e);
-                        entryTextDiv.textContent = itemData; // Show raw string if not JSON
-                        parsedGeminiData = { callsign: 'unknown', name: 'unknown', location: 'unknown', traffic: false }; // Default for button logic
+                        entryTextDiv.textContent = itemData;
+                        parsedGeminiData = { callsign: 'unknown', name: 'unknown', location: 'unknown', traffic: false }; 
                     }
                 } else {
                     entryTextDiv.textContent = itemData;
@@ -125,9 +139,9 @@
                     buttonsDiv.classList.add('gemini-actions');
 
                     const types = [
-                        { text: "Check In", type: "Check In" }, 
-                        { text: "Check In/Out", type: "Check In/Out" },
-                        { text: "Check In with Traffic", type: "Check In w/Traffic" }
+                        { text: "Check In", type: "Check In", defaultCheckInState: true }, 
+                        { text: "Check In/Out", type: "Check In/Out", defaultCheckInState: false },
+                        { text: "Check In with Traffic", type: "Check In w/Traffic", defaultCheckInState: true }
                     ];
 
                     types.forEach(action => {
@@ -139,7 +153,7 @@
                             button.classList.add('button-green');
                         }
                         button.onclick = () => {
-                            addLogEntry(parsedGeminiData.callsign, parsedGeminiData.name, parsedGeminiData.location, action.type);
+                            addLogEntry(parsedGeminiData.callsign, parsedGeminiData.name, parsedGeminiData.location, action.type, action.defaultCheckInState);
                         };
                         buttonsDiv.appendChild(button);
                     });

@@ -47,6 +47,17 @@ body {
     background-color: #f1f1f1;
 }
 
+.checked-out-row td {
+    text-decoration: line-through;
+    color: #999; /* Optional: change color for checked-out rows */
+}
+
+#net-log-table td.actions-cell,
+#net-log-table th.actions-cell {
+    /* Potentially add specific styling for the actions column if needed */
+    /* e.g., to control width or alignment of multiple buttons */
+}
+
 .container {
     display: flex;
     width: 100%; /* Take full width of main-content */
@@ -101,6 +112,7 @@ h2 {
     margin-top: 5px;
     display: flex;
     gap: 5px; /* Space between buttons */
+    flex-wrap: wrap; /* Allow buttons to wrap if not enough space */
 }
 
 .action-button {
