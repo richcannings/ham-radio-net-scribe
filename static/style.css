@@ -7,10 +7,39 @@ body {
     min-height: 100vh;
 }
 
+.title-bar {
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed; /* Keep title bar at the top */
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000; /* Ensure it's above other content */
+    box-sizing: border-box;
+}
+
+.title-text {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.clocks {
+    font-size: 0.9em;
+}
+
+.clock {
+    margin-left: 15px;
+}
+
 .main-content {
     width: 95%;
     max-width: 1600px;
     margin: 20px auto; /* Center the main content area */
+    padding-top: 60px; /* Add padding to prevent content from being hidden by fixed title bar */
 }
 
 #net-log-section {
@@ -55,7 +84,7 @@ body {
 #net-log-table td.actions-cell,
 #net-log-table th.actions-cell {
     /* Potentially add specific styling for the actions column if needed */
-    /* e.g., to control width or alignment of multiple buttons */
+    white-space: nowrap; /* Prevent buttons from wrapping too aggressively in actions cell */
 }
 
 .container {
@@ -146,4 +175,36 @@ h2 {
 
 .remove-button:hover {
     background-color: #e53935;
+}
+
+.edit-input {
+    width: 95%; /* Make input fields take most of the cell width */
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-sizing: border-box;
+}
+
+.edit-button {
+    /* Specific styling for Edit button if needed, e.g., different color */
+    /* background-color: #ffc107; */ /* Example: Amber */
+    /* color: black; */
+}
+
+.ok-button {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border-color: #4CAF50;
+}
+.ok-button:hover {
+    background-color: #45a049;
+}
+
+.cancel-button {
+    background-color: #757575; /* Grey */
+    color: white;
+    border-color: #757575;
+}
+.cancel-button:hover {
+    background-color: #616161;
 } 

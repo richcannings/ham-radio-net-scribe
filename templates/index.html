@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="title-bar">
+        <div class="title-text">W6RGC/IA Net Scribe and Logger</div>
+        <div class="clocks">
+            <span id="pacific-time" class="clock"></span>
+            <span id="utc-time" class="clock"></span>
+        </div>
+    </div>
+
     <div class="main-content">
         <div id="net-log-section">
             <h2>Net Log</h2>
@@ -28,13 +36,13 @@
 
         <div class="container">
             <div class="panel" id="transcriptions-panel">
-                <h2>Transcriptions</h2>
+                <h2>Live Transcript</h2>
                 <div id="transcriptions-history" class="history-box">
                     <!-- Transcriptions will be loaded here -->
                 </div>
             </div>
             <div class="panel" id="gemini-outputs-panel">
-                <h2>Gemini Outputs</h2>
+                <h2>Detected Call Signs</h2>
                 <div id="gemini-outputs-history" class="history-box">
                     <!-- Gemini outputs will be loaded here -->
                 </div>
@@ -45,6 +53,7 @@
     <script>
         // Store net log data client-side for now
         let netLog = [];
+        let editingRowIndex = -1; // -1 means no row is currently being edited
 
         async function fetchData(url) {
             try {
@@ -65,48 +74,110 @@
 
             netLog.forEach((entry, index) => {
                 const row = tableBody.insertRow();
-                
-                // Callsign cell
-                const callsignCell = row.insertCell();
-                if (entry.callsign && entry.callsign.toLowerCase() !== "unknown") {
-                    const callsignLink = document.createElement('a');
-                    callsignLink.href = `https://www.qrz.com/db/${entry.callsign.toUpperCase()}`;
-                    callsignLink.textContent = entry.callsign.toUpperCase();
-                    callsignLink.target = "_blank";
-                    callsignLink.rel = "noopener noreferrer";
-                    callsignCell.appendChild(callsignLink);
+
+                if (index === editingRowIndex) {
+                    // --- EDIT MODE --- 
+                    const callsignCell = row.insertCell();
+                    const callsignInput = document.createElement('input');
+                    callsignInput.type = 'text';
+                    callsignInput.value = entry.callsign;
+                    callsignInput.classList.add('edit-input');
+                    callsignCell.appendChild(callsignInput);
+
+                    const nameCell = row.insertCell();
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.value = entry.name;
+                    nameInput.classList.add('edit-input');
+                    nameCell.appendChild(nameInput);
+
+                    const locationCell = row.insertCell();
+                    const locationInput = document.createElement('input');
+                    locationInput.type = 'text';
+                    locationInput.value = entry.location;
+                    locationInput.classList.add('edit-input');
+                    locationCell.appendChild(locationInput);
+
+                    row.insertCell().textContent = entry.type; // Type is not editable
+
+                    const actionsCell = row.insertCell();
+                    actionsCell.classList.add('actions-cell');
+
+                    const okButton = document.createElement('button');
+                    okButton.textContent = 'OK';
+                    okButton.classList.add('action-button', 'ok-button');
+                    okButton.onclick = () => {
+                        netLog[index].callsign = callsignInput.value.trim();
+                        netLog[index].name = nameInput.value.trim();
+                        netLog[index].location = locationInput.value.trim();
+                        editingRowIndex = -1;
+                        renderNetLogTable();
+                    };
+                    actionsCell.appendChild(okButton);
+
+                    const cancelButton = document.createElement('button');
+                    cancelButton.textContent = 'Cancel';
+                    cancelButton.classList.add('action-button', 'cancel-button');
+                    cancelButton.onclick = () => {
+                        editingRowIndex = -1;
+                        renderNetLogTable();
+                    };
+                    actionsCell.appendChild(cancelButton);
+
                 } else {
-                    callsignCell.textContent = entry.callsign;
+                    // --- DISPLAY MODE ---
+                    const callsignCell = row.insertCell();
+                    if (entry.callsign && entry.callsign.toLowerCase() !== "unknown") {
+                        const callsignLink = document.createElement('a');
+                        callsignLink.href = `https://www.qrz.com/db/${entry.callsign.toUpperCase()}`;
+                        callsignLink.textContent = entry.callsign.toUpperCase();
+                        callsignLink.target = "_blank";
+                        callsignLink.rel = "noopener noreferrer";
+                        callsignCell.appendChild(callsignLink);
+                    } else {
+                        callsignCell.textContent = entry.callsign;
+                    }
+
+                    row.insertCell().textContent = entry.name;
+                    row.insertCell().textContent = entry.location;
+                    row.insertCell().textContent = entry.type;
+                    
+                    if (!entry.isCheckedIn) {
+                        row.classList.add('checked-out-row');
+                    }
+
+                    const actionsCell = row.insertCell();
+                    actionsCell.classList.add('actions-cell');
+                    
+                    const checkInOutButton = document.createElement('button');
+                    checkInOutButton.textContent = entry.isCheckedIn ? 'Check Out' : 'Check In';
+                    checkInOutButton.classList.add('action-button');
+                    checkInOutButton.onclick = () => {
+                        netLog[index].isCheckedIn = !netLog[index].isCheckedIn;
+                        renderNetLogTable();
+                    };
+                    actionsCell.appendChild(checkInOutButton);
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.classList.add('action-button', 'edit-button');
+                    editButton.onclick = () => {
+                        editingRowIndex = index;
+                        renderNetLogTable();
+                    };
+                    actionsCell.appendChild(editButton);
+
+                    const removeButton = document.createElement('button');
+                    removeButton.textContent = 'Remove';
+                    removeButton.classList.add('action-button', 'remove-button');
+                    removeButton.onclick = () => {
+                        netLog.splice(index, 1);
+                        if (editingRowIndex === index) editingRowIndex = -1; // If editing deleted row
+                        else if (editingRowIndex > index) editingRowIndex--; // Adjust if row before deleted
+                        renderNetLogTable();
+                    };
+                    actionsCell.appendChild(removeButton);
                 }
-
-                row.insertCell().textContent = entry.name;
-                row.insertCell().textContent = entry.location;
-                row.insertCell().textContent = entry.type;
-                
-                if (!entry.isCheckedIn) {
-                    row.classList.add('checked-out-row');
-                }
-
-                const actionsCell = row.insertCell();
-                actionsCell.classList.add('actions-cell'); // Add a class for potential styling
-                
-                const checkInOutButton = document.createElement('button');
-                checkInOutButton.textContent = entry.isCheckedIn ? 'Check Out' : 'Check In';
-                checkInOutButton.classList.add('action-button');
-                checkInOutButton.onclick = () => {
-                    netLog[index].isCheckedIn = !netLog[index].isCheckedIn;
-                    renderNetLogTable();
-                };
-                actionsCell.appendChild(checkInOutButton);
-
-                const removeButton = document.createElement('button');
-                removeButton.textContent = 'Remove';
-                removeButton.classList.add('action-button', 'remove-button');
-                removeButton.onclick = () => {
-                    netLog.splice(index, 1);
-                    renderNetLogTable();
-                };
-                actionsCell.appendChild(removeButton);
             });
         }
 
@@ -203,6 +274,36 @@
             historyDiv.scrollTop = historyDiv.scrollHeight;
         }
 
+        function formatTime(date, timeZone) {
+            const options = {
+                timeZone: timeZone,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                // Default to 12-hour, adjust for UTC
+                hour12: true 
+            };
+
+            if (timeZone === 'Etc/UTC') {
+                options.hour12 = false; // Use 24-hour format for UTC
+            }
+
+            let timeString = new Intl.DateTimeFormat('en-US', options).format(date);
+            
+            if (timeZone === 'Etc/UTC') {
+                timeString += ' UTC';
+            } else if (timeZone === 'America/Los_Angeles') {
+                timeString += ' PT';
+            }
+            return timeString;
+        }
+
+        function updateClocks() {
+            const now = new Date();
+            document.getElementById('pacific-time').textContent = formatTime(now, 'America/Los_Angeles');
+            document.getElementById('utc-time').textContent = formatTime(now, 'Etc/UTC');
+        }
+
         async function refreshData() {
             const transcriptionsData = await fetchData('/get_transcriptions');
             if (transcriptionsData && transcriptionsData.transcriptions) {
@@ -218,7 +319,9 @@
         setInterval(refreshData, 2000);
         window.onload = () => {
             refreshData();
-            renderNetLogTable(); // Initial render of the net log table
+            renderNetLogTable();
+            updateClocks(); // Initial clock update
+            setInterval(updateClocks, 1000); // Update clocks every second
         };
     </script>
 </body>
