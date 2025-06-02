@@ -23,7 +23,7 @@ body {
 }
 
 .title-text {
-    font-size: 1.2em;
+    font-size: 1.5em;
     font-weight: bold;
 }
 
@@ -103,6 +103,35 @@ body {
 
 .panel:last-child {
     border-right: none;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 10px; /* Add margin below header before history box */
+}
+
+.panel-header h2 {
+    margin: 0; /* Remove default h2 margin */
+    border-bottom: none; /* Remove h2's own border as panel-header has one */
+    padding-bottom: 0; /* Remove h2's own padding */
+    text-align: left; /* Explicitly align title to the left */
+}
+
+.clear-button {
+    /* Using action-button class for base styling */
+    background-color: #e0e0e0; /* Lighter grey for clear */
+    color: #333;
+    border-color: #ccc;
+    padding: 4px 8px; /* Make clear buttons a bit smaller */
+    font-size: 0.8em;
+}
+
+.clear-button:hover {
+    background-color: #d5d5d5;
 }
 
 h2 {

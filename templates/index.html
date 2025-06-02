@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ham Radio Net Scribe</title>
+    <title>W6RGC/AI Net Scribe</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="title-bar">
-        <div class="title-text">W6RGC/IA Net Scribe and Logger</div>
+        <div class="title-text">W6RGC/AI Net Scribe</div>
         <div class="clocks">
             <span id="pacific-time" class="clock"></span>
             <span id="utc-time" class="clock"></span>
@@ -17,7 +17,9 @@
 
     <div class="main-content">
         <div id="net-log-section">
-            <h2>Net Log</h2>
+            <div class="panel-header">
+                <h2>Log</h2>
+            </div>
             <table id="net-log-table">
                 <thead>
                     <tr>
@@ -36,13 +38,19 @@
 
         <div class="container">
             <div class="panel" id="transcriptions-panel">
-                <h2>Live Transcript</h2>
+                <div class="panel-header">
+                    <h2>Live Transcript</h2>
+                    <button id="clear-transcriptions" class="clear-button action-button">Clear</button>
+                </div>
                 <div id="transcriptions-history" class="history-box">
                     <!-- Transcriptions will be loaded here -->
                 </div>
             </div>
             <div class="panel" id="gemini-outputs-panel">
-                <h2>Detected Call Signs</h2>
+                 <div class="panel-header">
+                    <h2>Detected Call Signs</h2>
+                    <button id="clear-gemini-outputs" class="clear-button action-button">Clear</button>
+                </div>
                 <div id="gemini-outputs-history" class="history-box">
                     <!-- Gemini outputs will be loaded here -->
                 </div>
@@ -216,7 +224,7 @@
                             callsignLink.href = `https://www.qrz.com/db/${callsign.toUpperCase()}`;
                             callsignLink.textContent = callsign.toUpperCase();
                             callsignLink.target = "_blank";
-                            callsignLink.rel = "noopener noreferrer"; // Security best practice
+                            callsignLink.rel = "noopener noreferrer";
                             entryTextDiv.appendChild(callsignLink);
                         } else {
                             entryTextDiv.appendChild(document.createTextNode(callsign));
@@ -267,6 +275,34 @@
                         };
                         buttonsDiv.appendChild(button);
                     });
+                    
+                    // Add Remove button for Gemini/Detected Call Sign entries
+                    const removeDetectedButton = document.createElement('button');
+                    removeDetectedButton.textContent = 'Remove';
+                    removeDetectedButton.classList.add('action-button', 'remove-button');
+                    removeDetectedButton.onclick = async () => {
+                        // Removed confirmation dialog
+                        try {
+                            const response = await fetch('/remove_detected_call_sign', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ text: itemData }) // Send the original itemData string
+                            });
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+                            }
+                            entryContainer.remove(); // Remove from DOM on success
+                            console.log("Detected call sign removed successfully.");
+                        } catch (error) {
+                            console.error("Error removing detected call sign:", error);
+                            alert(`Failed to remove detected call sign: ${error.message}`);
+                        }
+                    };
+                    buttonsDiv.appendChild(removeDetectedButton);
+
                     entryContainer.appendChild(buttonsDiv);
                 }
                 historyDiv.appendChild(entryContainer);
@@ -304,6 +340,25 @@
             document.getElementById('utc-time').textContent = formatTime(now, 'Etc/UTC');
         }
 
+        async function clearHistory(type) {
+            try {
+                const response = await fetch(`/clear_${type}`, { method: 'POST' });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                console.log(`${type} history cleared on server.`);
+                // Manually clear the display on the client side for immediate feedback
+                const historyDivId = type === 'transcriptions' ? 'transcriptions-history' : 'gemini-outputs-history';
+                document.getElementById(historyDivId).innerHTML = ''; 
+                // Optionally, call refreshData() if you want to ensure server state is re-fetched,
+                // but for clearing, immediate client-side clear is often better UX.
+                // await refreshData(); 
+            } catch (error) {
+                console.error(`Error clearing ${type} history:`, error);
+                alert(`Failed to clear ${type} history.`);
+            }
+        }
+
         async function refreshData() {
             const transcriptionsData = await fetchData('/get_transcriptions');
             if (transcriptionsData && transcriptionsData.transcriptions) {
@@ -320,8 +375,20 @@
         window.onload = () => {
             refreshData();
             renderNetLogTable();
-            updateClocks(); // Initial clock update
-            setInterval(updateClocks, 1000); // Update clocks every second
+            updateClocks();
+            setInterval(updateClocks, 1000);
+
+            document.getElementById('clear-transcriptions').addEventListener('click', () => {
+                if (confirm("Are you sure you want to clear the Live Transcript history?")) {
+                    clearHistory('transcriptions');
+                }
+            });
+
+            document.getElementById('clear-gemini-outputs').addEventListener('click', () => {
+                if (confirm("Are you sure you want to clear the Detected Call Signs history?")) {
+                    clearHistory('gemini_outputs'); // Note: endpoint uses plural and underscore
+                }
+            });
         };
     </script>
 </body>
