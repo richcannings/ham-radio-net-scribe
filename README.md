@@ -12,6 +12,7 @@ Allows for one click check-ins, check management, and check in edits. Links to Q
 *   **Call Sign Detection:** Identifies call signs mentioned in the transcript.
 *   **Log Management:** Allows for manual entry, editing, and removal of check-ins.
 *   **Real-time Updates:** The log and detected call signs are updated in real-time.
+*   **Digirig Auto Detection:** Automatically find your [Digirig](https://digirig.net/) and connects to it
 
 ## Screenshot
 
@@ -32,8 +33,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
-    cd W6RGC_AI_Net_Scribe 
+    git clone https://github.com/richcannings/ham-radio-net-scribe
+    cd ham-radio-net-scribe 
     ```
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
@@ -49,7 +50,7 @@ These instructions will get you a copy of the project up and running on your loc
     *   Paste your Gemini API key into this file and save it.
 5.  **Configure your audio device:**
     *   Open the `constants.py` file.
-    *   Modify the `DEVICE_NAME` variable to match the name of your microphone as recognized by your system. You might need to run a simple `sounddevice` script to list available devices if you are unsure (e.g., `python -m sounddevice`).
+    *   If you are using a sound device other than a Digirig, modify the `DEVICE_NAME` variable to match the name of your microphone as recognized by your system. You might need to run a simple `sounddevice` script to list available devices if you are unsure (e.g., `python -m sounddevice`).
 
 ### Running the Application
 
@@ -63,7 +64,7 @@ This will start the audio processing backend and the Flask web server. You can a
 
 ## Contributing
 
-(TODO: Add guidelines for contributing to the project)
+All support: feature requests, bug filing, buf fixing, refactoring, and feature development is most welcome.
 
 ## License
 

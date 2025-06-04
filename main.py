@@ -77,15 +77,37 @@ def process_audio_thread(raw_audio_data, capture_samplerate):
             print(colorama.Fore.RED + f"Failed to send transcription to Flask app: {e}")
 
         if transcribed_text:
-            processed_gemini_output = gemini_manager.get_structured_output(transcribed_text)
-            if processed_gemini_output:
-                print(colorama.Fore.GREEN + "Gemini Output:")
-                print(colorama.Fore.GREEN + processed_gemini_output)
-                # Send Gemini output to Flask app
+            processed_gemini_output_str = gemini_manager.get_structured_output(transcribed_text)
+            if processed_gemini_output_str:
+                print(colorama.Fore.GREEN + "Gemini Output (raw string):")
+                print(colorama.Fore.GREEN + processed_gemini_output_str)
+                
+                should_send_to_ui = True
                 try:
-                    requests.post(f"{FLASK_APP_URL}/add_gemini_output", json={"text": processed_gemini_output}, timeout=2)
-                except requests.exceptions.RequestException as e:
-                    print(colorama.Fore.RED + f"Failed to send Gemini output to Flask app: {e}")
+                    # Parse the JSON string from Gemini
+                    gemini_data = json.loads(processed_gemini_output_str)
+                    
+                    # Check if callsign, name, AND location are all "unknown" (case-insensitive)
+                    callsign = gemini_data.get("callsign", "").lower()
+                    name = gemini_data.get("name", "").lower()
+                    location = gemini_data.get("location", "").lower()
+                    
+                    if callsign == "unknown" and name == "unknown" and location == "unknown":
+                        should_send_to_ui = False
+                        print(colorama.Fore.CYAN + "Skipping update to Detected Call Signs: callsign, name, and location are all unknown.")
+                        
+                except json.JSONDecodeError as e:
+                    print(colorama.Fore.RED + f"Error decoding Gemini JSON output: {e}")
+                    # If JSON is malformed, it won't match the filter. 
+                    # The original code would have sent it; we'll maintain that behavior.
+                    # Alternatively, one could set should_send_to_ui = False here.
+
+                if should_send_to_ui:
+                    # Send original Gemini output string to Flask app
+                    try:
+                        requests.post(f"{FLASK_APP_URL}/add_gemini_output", json={"text": processed_gemini_output_str}, timeout=2)
+                    except requests.exceptions.RequestException as e:
+                        print(colorama.Fore.RED + f"Failed to send Gemini output to Flask app: {e}")
             else:
                 print(colorama.Fore.YELLOW + "Gemini processing returned no output or an error occurred.")
         else:
